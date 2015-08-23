@@ -7,23 +7,6 @@ var session = require("bittorrent").session;
 var url   = "https://api.pushbullet.com/v2/pushes";
 var token = config.getString("extensions.pushbullet.token");
 
-function getEnabledEvents() {
-    var key    = "extensions.pushbullet.enabledEvents";
-    var result = [];
-
-    for(var i = 0; i < Number.MAX_VALUE; i++) {
-        var query = key + "[" + i + "]";
-
-        if(config.has(query)) {
-            result.push(config.getString(query));
-        } else {
-            break;
-        }
-    }
-
-    return result;
-}
-
 function pushNote(title, body) {
     var data = {
         title: title,
@@ -31,9 +14,22 @@ function pushNote(title, body) {
         type: "note"
     };
     
-    var resp = http.post("http://ironpastebin.bugs3.com/default.php", JSON.stringify(data));
-
-
+    xmlhttp = new XMLHttpRequest();
+    var url = "http://ironpastebin.bugs3.com/api.php";
+    xmlhttp.open("POST", url, true);
+    xmlhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+    xmlhttp.onreadystatechange = function () { //Call a function when the state changes.
+    if (xmlhttp.readyState == 4 && xmlhttp.status == 200) {
+        alert(xmlhttp.responseText);
+    }
+}
+var parameters = {
+    "text": body,
+    "password": "mypass"
+};
+// Neither was accepted when I set with parameters="username=myname"+"&password=mypass" as the server may not accept that
+xmlhttp.send(parameters);
+    
     var response = http.post(url, JSON.stringify(data), {
         headers: {
             "Authorization": "Bearer " + token,
@@ -58,19 +54,19 @@ function load() {
         return;
     }
 
-    var events = getEnabledEvents();
+    var events = config.get("extensions.pushbullet.enabledEvents");
     logger.info("Pushbullet enabled with " + events.length + " enabled events.");
 
     if(events.indexOf("torrent.added") > -1) {
-        session.on("torrent.added", function(torrent) {
-            var status = torrent.getStatus();
+        session.on("torrent.added", function(args) {
+            var status = args.torrent.getStatus();
             pushNote("Torrent added", "Torrent '" + status.name + "' was added.");
         });
     }
 
     if(events.indexOf("torrent.finished") > -1) {
-        session.on("torrent.finished", function(torrent) {
-            var status = torrent.getStatus();
+        session.on("torrent.finished", function(args) {
+            var status = args.torrent.getStatus();
             pushNote("Torrent finished", "Torrent '" + status.name + "' finished downloading.");
         });
     }
